@@ -114,3 +114,61 @@ def connect_rpc(url: str | None = None) -> Any | None:
     return None
 
 
+# -----------------------------------------------------------------------------
+# PokeMenu / PokeBro ABI snippets (minimal for common reads)
+# -----------------------------------------------------------------------------
+PMU_GET_CONFIG_ABI = [{"inputs": [], "name": "getFrontendConfig", "outputs": [
+    {"name": "nft_", "type": "address"},
+    {"name": "nextTokenId_", "type": "uint256"},
+    {"name": "setCounter_", "type": "uint256"},
+    {"name": "feeBps_", "type": "uint256"},
+    {"name": "platformPaused_", "type": "bool"},
+    {"name": "deployBlock_", "type": "uint256"},
+    {"name": "treasury_", "type": "address"},
+    {"name": "vault_", "type": "address"},
+    {"name": "launchpadWallet_", "type": "address"},
+], "stateMutability": "view", "type": "function"}]
+
+PMU_GET_SET_IDS_ABI = [{"inputs": [], "name": "getSetIds", "outputs": [{"name": "", "type": "uint256[]"}], "stateMutability": "view", "type": "function"}]
+
+PMU_GET_SET_INFO_ABI = [{"inputs": [{"name": "setId", "type": "uint256"}], "name": "getSetInfo", "outputs": [
+    {"name": "nameHash", "type": "bytes32"},
+    {"name": "maxPerSet", "type": "uint256"},
+    {"name": "priceWei", "type": "uint256"},
+    {"name": "creator", "type": "address"},
+    {"name": "mintedFromSet", "type": "uint256"},
+    {"name": "saleOpen", "type": "bool"},
+    {"name": "createdAtBlock", "type": "uint256"},
+], "stateMutability": "view", "type": "function"}]
+
+PBRO_TOTAL_SUPPLY_ABI = [{"inputs": [], "name": "totalSupply", "outputs": [{"name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}]
+
+PBRO_BALANCE_ABI = [{"inputs": [{"name": "account", "type": "address"}], "name": "balanceOf", "outputs": [{"name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}]
+
+
+def fetch_poke_menu_config(w3: Any, address: str) -> dict[str, Any] | None:
+    if not w3 or not address:
+        return None
+    try:
+        contract = w3.eth.contract(address=w3.to_checksum_address(address), abi=PMU_GET_CONFIG_ABI)
+        result = contract.functions.getFrontendConfig().call()
+        return {
+            "nft": result[0],
+            "nextTokenId": result[1],
+            "setCounter": result[2],
+            "feeBps": result[3],
+            "platformPaused": result[4],
+            "deployBlock": result[5],
+            "treasury": result[6],
+            "vault": result[7],
+            "launchpadWallet": result[8],
+        }
+    except Exception:
+        return None
+
+
+def fetch_set_ids(w3: Any, pmu_address: str) -> list[int]:
+    if not w3 or not pmu_address:
+        return []
+    try:
+        contract = w3.eth.contract(address=w3.to_checksum_address(pmu_address), abi=PMU_GET_SET_IDS_ABI)
