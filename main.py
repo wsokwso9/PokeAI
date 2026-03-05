@@ -172,3 +172,61 @@ def fetch_set_ids(w3: Any, pmu_address: str) -> list[int]:
         return []
     try:
         contract = w3.eth.contract(address=w3.to_checksum_address(pmu_address), abi=PMU_GET_SET_IDS_ABI)
+        ids = contract.functions.getSetIds().call()
+        return [int(x) for x in ids]
+    except Exception:
+        return []
+
+
+def fetch_set_info(w3: Any, pmu_address: str, setId: int) -> dict[str, Any] | None:
+    if not w3 or not pmu_address:
+        return None
+    try:
+        contract = w3.eth.contract(address=w3.to_checksum_address(pmu_address), abi=PMU_GET_SET_INFO_ABI)
+        result = contract.functions.getSetInfo(setId).call()
+        return {
+            "nameHash": result[0],
+            "maxPerSet": result[1],
+            "priceWei": result[2],
+            "creator": result[3],
+            "mintedFromSet": result[4],
+            "saleOpen": result[5],
+            "createdAtBlock": result[6],
+        }
+    except Exception:
+        return None
+
+
+def fetch_poke_bro_total_supply(w3: Any, address: str) -> int | None:
+    if not w3 or not address:
+        return None
+    try:
+        contract = w3.eth.contract(address=w3.to_checksum_address(address), abi=PBRO_TOTAL_SUPPLY_ABI)
+        return contract.functions.totalSupply().call()
+    except Exception:
+        return None
+
+
+def fetch_poke_bro_balance(w3: Any, pbro_address: str, account: str) -> int | None:
+    if not w3 or not pbro_address or not account:
+        return None
+    try:
+        contract = w3.eth.contract(address=w3.to_checksum_address(pbro_address), abi=PBRO_BALANCE_ABI)
+        return contract.functions.balanceOf(w3.to_checksum_address(account)).call()
+    except Exception:
+        return None
+
+
+# -----------------------------------------------------------------------------
+# CLI: info
+# -----------------------------------------------------------------------------
+def cmd_info(args: argparse.Namespace) -> int:
+    print(f"{APP_NAME} v{VERSION}")
+    print(f"Config file: {config_path()}")
+    print(f"Web3 available: {has_web3()}")
+    pmu = get_config("poke_menu_address")
+    pbro = get_config("poke_bro_address")
+    rpc = get_config("rpc_url") or DEFAULT_RPC
+    print(f"PokeMenu address: {pmu or '(not set)'}")
+    print(f"PokeBro address: {pbro or '(not set)'}")
+    print(f"RPC URL: {rpc}")
