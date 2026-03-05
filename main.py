@@ -346,3 +346,61 @@ def cmd_estimate(args: argparse.Namespace) -> int:
 def cmd_balance(args: argparse.Namespace) -> int:
     pbro_addr = args.poke_bro or get_config("poke_bro_address")
     account = args.account or get_config("default_account")
+    rpc = args.rpc or get_config("rpc_url") or DEFAULT_RPC
+    if not pbro_addr or not account:
+        print("PokeBro address and account required (--poke-bro, --account or config).")
+        return 1
+    w3 = connect_rpc(rpc)
+    if not w3:
+        print("Web3 not available or RPC failed.")
+        return 1
+    bal = fetch_poke_bro_balance(w3, pbro_addr, account)
+    if bal is None:
+        print("Failed to read balance.")
+        return 1
+    print(f"PokeBro balance for {truncate_addr(account)}: {bal}")
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# CLI: menu (interactive-style prompts)
+# -----------------------------------------------------------------------------
+def cmd_menu(args: argparse.Namespace) -> int:
+    print(f"\n{APP_NAME} v{VERSION} — PokeMenu / PokeBro helper\n")
+    print("1) Info (config and addresses)")
+    print("2) Stats (on-chain PokeMenu config + PokeBro total supply)")
+    print("3) Sets (list sets and sale status)")
+    print("4) Estimate (mint cost for set + count)")
+    print("5) Balance (PokeBro balance for an address)")
+    print("6) Config get/set (key [value])")
+    print("q) Quit")
+    try:
+        choice = input("\nChoice: ").strip().lower()
+    except EOFError:
+        return 0
+    if choice == "q" or choice == "":
+        return 0
+    if choice == "1":
+        return cmd_info(args)
+    if choice == "2":
+        return cmd_stats(args)
+    if choice == "3":
+        return cmd_sets(args)
+    if choice == "4":
+        try:
+            sid = int(input("Set ID: ").strip() or "1")
+            cnt = int(input("Count: ").strip() or "1")
+        except ValueError:
+            sid, cnt = 1, 1
+        args.set_id = sid
+        args.count = cnt
+        return cmd_estimate(args)
+    if choice == "5":
+        acc = input("Account (0x...): ").strip()
+        if acc:
+            args.account = acc
+        return cmd_balance(args)
+    if choice == "6":
+        parts = input("Config key [value]: ").strip().split(maxsplit=1)
+        args.get = parts[0] if parts else None
+        args.value = parts[1] if len(parts) > 1 else None
