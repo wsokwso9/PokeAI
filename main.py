@@ -288,3 +288,61 @@ def cmd_stats(args: argparse.Namespace) -> int:
 
 
 # -----------------------------------------------------------------------------
+# CLI: sets
+# -----------------------------------------------------------------------------
+def cmd_sets(args: argparse.Namespace) -> int:
+    pmu_addr = args.poke_menu or get_config("poke_menu_address")
+    rpc = args.rpc or get_config("rpc_url") or DEFAULT_RPC
+    if not pmu_addr:
+        print("PokeMenu address not set.")
+        return 1
+    w3 = connect_rpc(rpc)
+    if not w3:
+        print("Web3 not available or RPC failed.")
+        return 1
+    ids = fetch_set_ids(w3, pmu_addr)
+    if not ids:
+        print("No sets or failed to read.")
+        return 0
+    print(f"Set IDs: {ids}")
+    for sid in ids[: args.limit]:
+        info = fetch_set_info(w3, pmu_addr, sid)
+        if not info:
+            continue
+        price_eth = fmt_eth(info["priceWei"])
+        remaining = max(0, info["maxPerSet"] - info["mintedFromSet"])
+        sale = "OPEN" if info["saleOpen"] else "closed"
+        print(f"  Set #{sid}: price {price_eth}, minted {info['mintedFromSet']}/{info['maxPerSet']}, remaining {remaining}, sale {sale}")
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# CLI: estimate
+# -----------------------------------------------------------------------------
+def cmd_estimate(args: argparse.Namespace) -> int:
+    pmu_addr = args.poke_menu or get_config("poke_menu_address")
+    rpc = args.rpc or get_config("rpc_url") or DEFAULT_RPC
+    setId = args.set_id
+    count = max(1, min(PMU_MAX_MINT_PER_TX, args.count))
+    if not pmu_addr:
+        print("PokeMenu address not set.")
+        return 1
+    w3 = connect_rpc(rpc)
+    if not w3:
+        print("Web3 not available or RPC failed.")
+        return 1
+    info = fetch_set_info(w3, pmu_addr, setId)
+    if not info:
+        print(f"Set #{setId} not found or error.")
+        return 1
+    total_wei = info["priceWei"] * count
+    print(f"Set #{setId}, count {count}: total {fmt_eth(total_wei)}")
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# CLI: balance
+# -----------------------------------------------------------------------------
+def cmd_balance(args: argparse.Namespace) -> int:
+    pbro_addr = args.poke_bro or get_config("poke_bro_address")
+    account = args.account or get_config("default_account")
