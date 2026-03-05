@@ -230,3 +230,61 @@ def cmd_info(args: argparse.Namespace) -> int:
     print(f"PokeMenu address: {pmu or '(not set)'}")
     print(f"PokeBro address: {pbro or '(not set)'}")
     print(f"RPC URL: {rpc}")
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# CLI: config
+# -----------------------------------------------------------------------------
+def cmd_config(args: argparse.Namespace) -> int:
+    if args.get:
+        val = get_config(args.get)
+        print(val if val is not None else "")
+        return 0
+    if args.set and args.value is not None:
+        set_config(args.set, args.value)
+        print(f"Set {args.set} = {args.value}")
+        return 0
+    # List all
+    c = load_config()
+    for k, v in sorted(c.items()):
+        print(f"{k}: {v}")
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# CLI: stats (on-chain if Web3 + addresses)
+# -----------------------------------------------------------------------------
+def cmd_stats(args: argparse.Namespace) -> int:
+    pmu_addr = args.poke_menu or get_config("poke_menu_address")
+    pbro_addr = args.poke_bro or get_config("poke_bro_address")
+    rpc = args.rpc or get_config("rpc_url") or DEFAULT_RPC
+    if not pmu_addr:
+        print("PokeMenu address not set. Use --poke-menu or config set poke_menu_address <addr>")
+        return 1
+    w3 = connect_rpc(rpc)
+    if not w3:
+        print("Web3 not available or RPC failed. Install web3 and set a working RPC URL.")
+        return 1
+    cfg = fetch_poke_menu_config(w3, pmu_addr)
+    if not cfg:
+        print("Failed to read PokeMenu config. Check address and RPC.")
+        return 1
+    print("--- PokeMenu ---")
+    print(f"Next token ID: {cfg['nextTokenId']}")
+    print(f"Set count: {cfg['setCounter']}")
+    print(f"Fee BPS: {cfg['feeBps']}")
+    print(f"Paused: {cfg['platformPaused']}")
+    print(f"Treasury: {truncate_addr(cfg['treasury'])}")
+    print(f"Vault: {truncate_addr(cfg['vault'])}")
+    print(f"Launchpad wallet: {truncate_addr(cfg['launchpadWallet'])}")
+    print(f"PokeBro NFT: {truncate_addr(cfg['nft'])}")
+    if pbro_addr:
+        total = fetch_poke_bro_total_supply(w3, pbro_addr)
+        if total is not None:
+            print("--- PokeBro ---")
+            print(f"Total minted: {total} / {PBRO_MAX_SUPPLY}")
+    return 0
+
+
+# -----------------------------------------------------------------------------
