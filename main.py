@@ -56,3 +56,61 @@ def save_config(data: dict[str, Any]) -> bool:
 
 
 def get_config(key: str, default: Any = None) -> Any:
+    return load_config().get(key, default)
+
+
+def set_config(key: str, value: Any) -> None:
+    c = load_config()
+    c[key] = value
+    save_config(c)
+
+
+# -----------------------------------------------------------------------------
+# Formatting
+# -----------------------------------------------------------------------------
+def fmt_eth(wei: int | str) -> str:
+    try:
+        w = int(wei)
+        return f"{w / 1e18:.6f} ETH"
+    except (ValueError, TypeError):
+        return str(wei)
+
+
+def truncate_addr(addr: str, head: int = 6, tail: int = 4) -> str:
+    if not addr or len(addr) < head + tail + 2:
+        return addr or ""
+    if addr.startswith("0x"):
+        return f"{addr[: head + 2]}…{addr[-tail:]}"
+    return f"{addr[:head]}…{addr[-tail:]}"
+
+
+# -----------------------------------------------------------------------------
+# Optional Web3 (no hard dependency)
+# -----------------------------------------------------------------------------
+def _try_import_web3() -> Any:
+    try:
+        from web3 import Web3
+        return Web3
+    except ImportError:
+        return None
+
+
+def has_web3() -> bool:
+    return _try_import_web3() is not None
+
+
+def connect_rpc(url: str | None = None) -> Any | None:
+    url = url or get_config("rpc_url") or DEFAULT_RPC
+    w3 = _try_import_web3()
+    if w3 is None:
+        return None
+    try:
+        provider = w3.HTTPProvider(url)
+        conn = w3(provider)
+        if conn.is_connected():
+            return conn
+    except Exception:
+        pass
+    return None
+
+
