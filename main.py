@@ -404,3 +404,61 @@ def cmd_menu(args: argparse.Namespace) -> int:
         parts = input("Config key [value]: ").strip().split(maxsplit=1)
         args.get = parts[0] if parts else None
         args.value = parts[1] if len(parts) > 1 else None
+        args.set = args.get
+        return cmd_config(args)
+    print("Unknown choice.")
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------
+def main() -> int:
+    parser = argparse.ArgumentParser(description=f"{APP_NAME} — PokeMenu / PokeBro CLI")
+    parser.add_argument("--rpc", default=None, help="RPC URL")
+    parser.add_argument("--poke-menu", default=None, help="PokeMenu contract address")
+    parser.add_argument("--poke-bro", default=None, help="PokeBro contract address")
+    sub = parser.add_subparsers(dest="command", help="Command")
+
+    sub.add_parser("info", help="Show app info and config paths")
+    sub.add_parser("menu", help="Interactive menu")
+
+    p_config = sub.add_parser("config", help="Get/set config or list all")
+    p_config.add_argument("--get", default=None, help="Get config key")
+    p_config.add_argument("--set", default=None, help="Set config key")
+    p_config.add_argument("value", nargs="?", default=None, help="Value for set")
+
+    p_stats = sub.add_parser("stats", help="On-chain PokeMenu config and PokeBro total supply")
+    p_stats.add_argument("--limit", type=int, default=20, help="Max sets to show (for sets command)")
+
+    p_sets = sub.add_parser("sets", help="List collectible sets from PokeMenu")
+    p_sets.add_argument("--limit", type=int, default=20, help="Max sets to show")
+
+    p_est = sub.add_parser("estimate", help="Estimate mint cost for set + count")
+    p_est.add_argument("set_id", type=int, nargs="?", default=1, help="Set ID")
+    p_est.add_argument("count", type=int, nargs="?", default=1, help="Mint count")
+
+    p_bal = sub.add_parser("balance", help="PokeBro balance for account")
+    p_bal.add_argument("--account", default=None, help="Account address")
+
+    args = parser.parse_args()
+    if not args.command:
+        return cmd_menu(args)
+    handlers = {
+        "info": cmd_info,
+        "config": cmd_config,
+        "stats": cmd_stats,
+        "sets": cmd_sets,
+        "estimate": cmd_estimate,
+        "balance": cmd_balance,
+        "menu": cmd_menu,
+    }
+    handler = handlers.get(args.command)
+    if not handler:
+        parser.print_help()
+        return 1
+    return handler(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
